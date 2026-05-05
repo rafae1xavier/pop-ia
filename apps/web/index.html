@@ -5,7 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Gerador de POP com IA</title>
     <link rel="stylesheet" href="./styles.css" />
+    <link rel="stylesheet" href="https://unpkg.com/bpmn-js@17/dist/assets/diagram-js.css" />
+    <link rel="stylesheet" href="https://unpkg.com/bpmn-js@17/dist/assets/bpmn-font/css/bpmn-embedded.css" />
     <script src="./config.js"></script>
+    <script src="https://unpkg.com/bpmn-js@17/dist/bpmn-viewer.production.min.js"></script>
   </head>
   <body>
     <main class="app-shell">
@@ -87,7 +90,7 @@
           Gere um procedimento para visualizar o resultado.
         </article>
         <article id="diagram" class="tab-content">
-          <div id="diagram-output" class="diagram-output"></div>
+          <div id="diagram-output" class="bpmn-canvas"></div>
         </article>
         <article id="json" class="tab-content">
           <pre id="json-output"></pre>

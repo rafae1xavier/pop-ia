@@ -22,6 +22,7 @@ const downloadBpmn = document.querySelector("#download-bpmn");
 let lastResult = null;
 let chatMessages = [];
 let attachments = [];
+let bpmnViewer = null;
 
 apiInput.value = window.APP_CONFIG?.apiBaseUrl || localStorage.getItem("apiBaseUrl") || "http://localhost:3000";
 
@@ -251,8 +252,27 @@ function renderResult(result) {
   documentOutput.innerHTML = renderDocument(procedure);
   jsonOutput.textContent = JSON.stringify(procedure, null, 2);
   bpmnOutput.textContent = artifacts.bpmnXml;
-  renderDiagram(artifacts.mermaid, diagramOutput);
+  renderBpmnDiagram(artifacts.bpmnXml);
   renderDiagram(artifacts.mermaid, document.querySelector("#document-diagram-output"));
+}
+
+async function renderBpmnDiagram(bpmnXml) {
+  if (!bpmnXml || !window.BpmnJS) {
+    diagramOutput.textContent = bpmnXml || "";
+    return;
+  }
+
+  try {
+    if (bpmnViewer) {
+      bpmnViewer.destroy();
+    }
+    bpmnViewer = new window.BpmnJS({ container: diagramOutput });
+    await bpmnViewer.importXML(bpmnXml);
+    bpmnViewer.get("canvas").zoom("fit-viewport");
+  } catch (error) {
+    console.error("Erro ao renderizar BPMN:", error);
+    diagramOutput.textContent = bpmnXml;
+  }
 }
 
 async function renderDiagram(mermaidText, target) {
