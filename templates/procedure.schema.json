@@ -1,0 +1,106 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ProcedimentoOperacionalPadrao",
+  "type": "object",
+  "required": ["header", "objective", "diagram", "detailedFlow", "documents", "records"],
+  "properties": {
+    "header": {
+      "type": "object",
+      "required": ["system", "processType", "processName", "code", "revision", "date"],
+      "properties": {
+        "system": { "type": "string" },
+        "processType": { "type": "string" },
+        "processName": { "type": "string" },
+        "code": { "type": "string" },
+        "revision": { "type": "string" },
+        "date": { "type": "string" }
+      }
+    },
+    "objective": { "type": "string" },
+    "diagram": {
+      "type": "object",
+      "required": ["lanes", "steps", "decisions", "connections"],
+      "properties": {
+        "lanes": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "steps": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "number", "lane", "title", "description"],
+            "properties": {
+              "id": { "type": "string" },
+              "number": { "type": "string" },
+              "lane": { "type": "string" },
+              "title": { "type": "string" },
+              "description": { "type": "string" }
+            }
+          }
+        },
+        "decisions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "lane", "question", "yes", "no"],
+            "properties": {
+              "id": { "type": "string" },
+              "lane": { "type": "string" },
+              "question": { "type": "string" },
+              "yes": { "type": "string" },
+              "no": { "type": "string" }
+            }
+          }
+        },
+        "connections": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["from", "to"],
+            "properties": {
+              "from": { "type": "string" },
+              "to": { "type": "string" },
+              "label": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "detailedFlow": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["step", "description", "notes"],
+        "properties": {
+          "step": { "type": "string" },
+          "description": { "type": "string" },
+          "notes": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        }
+      }
+    },
+    "documents": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "records": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "storage", "retrieval", "owner", "access", "retention", "disposal"],
+        "properties": {
+          "name": { "type": "string" },
+          "storage": { "type": "string" },
+          "retrieval": { "type": "string" },
+          "owner": { "type": "string" },
+          "access": { "type": "string" },
+          "retention": { "type": "string" },
+          "disposal": { "type": "string" }
+        }
+      }
+    }
+  }
+}

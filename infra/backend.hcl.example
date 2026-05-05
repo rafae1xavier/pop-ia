@@ -1,0 +1,6 @@
+# Gerado automaticamente por scripts/bootstrap.sh
+# Copie para backend.hcl se precisar recriar manualmente.
+
+bucket = ""   # preenchido pelo bootstrap.sh
+key    = "pop-ia/terraform.tfstate"
+region = "us-east-1"

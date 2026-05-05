@@ -1,0 +1,18 @@
+# Copie este arquivo para terraform.tfvars e preencha os valores.
+# O arquivo terraform.tfvars nunca deve ser commitado (já está no .gitignore).
+
+aws_region   = "us-east-1"
+project_name = "pop-ia"
+
+# Model ID do Amazon Bedrock. Deixe vazio para rodar em modo demo (sem IA).
+#
+# ATENÇÃO: Antes de usar, habilite o modelo no console AWS:
+#   Bedrock → Model access → Request model access → Anthropic Claude
+#
+# Modelos disponíveis (do mais barato ao mais caro por token):
+#   anthropic.claude-3-haiku-20240307-v1:0        (~$0.0025 por chamada)
+#   us.anthropic.claude-3-5-haiku-20241022-v1:0      (~$0.004 por chamada)
+#   anthropic.claude-3-5-sonnet-20241022-v2:0     (~$0.018 por chamada)
+#
+# Para demonstrações com alunos, recomenda-se claude-3-5-haiku (boa qualidade, custo baixo).
+bedrock_model_id = "us.anthropic.claude-3-5-haiku-20241022-v1:0"

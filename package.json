@@ -1,0 +1,12 @@
+{
+  "name": "prisma-automation-process",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "api:local": "node apps/api/src/local.js",
+    "web:local": "node scripts/static-server.js apps/web 5173",
+    "package:api": "bash scripts/package-api.sh",
+    "check": "node --check apps/api/src/index.js && node --check apps/api/src/local.js && node --check scripts/static-server.js"
+  }
+}

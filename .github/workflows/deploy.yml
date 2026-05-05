@@ -1,0 +1,58 @@
+name: Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      bedrock_model_id:
+        description: "Bedrock Model ID (deixe vazio para usar o secret BEDROCK_MODEL_ID)"
+        required: false
+        default: ""
+
+jobs:
+  deploy:
+    name: Build e Deploy na AWS
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Configurar credenciais AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION || 'us-east-1' }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Build Lambda ZIP
+        run: npm run package:api
+
+      - name: Terraform Init
+        working-directory: infra
+        run: |
+          terraform init -input=false \
+            -backend-config="bucket=${{ secrets.TF_STATE_BUCKET }}" \
+            -backend-config="key=pop-ia/terraform.tfstate" \
+            -backend-config="region=${{ secrets.AWS_REGION || 'us-east-1' }}"
+
+      - name: Terraform Apply
+        working-directory: infra
+        env:
+          TF_VAR_bedrock_model_id: ${{ inputs.bedrock_model_id != '' && inputs.bedrock_model_id || secrets.BEDROCK_MODEL_ID }}
+          TF_VAR_aws_region: ${{ secrets.AWS_REGION || 'us-east-1' }}
+        run: terraform apply -input=false -auto-approve
+
+      - name: URLs do ambiente
+        working-directory: infra
+        run: |
+          echo ""
+          echo "Frontend : $(terraform output -raw cloudfront_url)"
+          echo "API      : $(terraform output -raw api_url)"

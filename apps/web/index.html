@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Gerador de POP com IA</title>
+    <link rel="stylesheet" href="./styles.css" />
+    <script src="./config.js"></script>
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="panel form-panel">
+        <div class="brand-block">
+          <span class="kicker">SGQ + IA</span>
+          <h1>Gerador de Procedimento Operacional Padrao</h1>
+        </div>
+
+        <div id="chat-log" class="chat-log" aria-live="polite"></div>
+
+        <form id="chat-form" class="chat-form">
+          <textarea
+            id="chat-message"
+            name="message"
+            rows="4"
+            placeholder="Descreva o processo, areas envolvidas, regras, registros e excecoes."
+          ></textarea>
+
+          <div id="attachment-list" class="attachment-list"></div>
+
+          <div class="chat-actions">
+            <input id="file-input" type="file" multiple hidden />
+            <button id="attach-button" type="button" class="secondary-button">Anexar</button>
+            <button type="submit" class="secondary-button">Enviar</button>
+            <button id="generate-pop" type="button" class="primary-button">Gerar POP</button>
+          </div>
+        </form>
+
+        <details class="settings-panel">
+          <summary>Configuracao</summary>
+          <div class="settings-grid">
+            <label>
+              Processo
+              <input id="process-name" name="processName" placeholder="Ex.: Auditoria interna" minlength="3" />
+            </label>
+
+            <div class="field-grid">
+              <label>
+                Codigo
+                <input id="process-code" name="code" value="POP XXX YYY 05" />
+              </label>
+              <label>
+                Revisao
+                <input id="process-revision" name="revision" value="09" />
+              </label>
+            </div>
+
+            <label>
+              Data
+              <input id="process-date" name="date" value="DD/MM/AAAA" />
+            </label>
+
+            <label>
+              Endpoint da API
+              <input id="api-endpoint" name="apiEndpoint" placeholder="http://localhost:3000" />
+            </label>
+          </div>
+        </details>
+
+        <div id="status" class="status">Pronto para gerar.</div>
+      </section>
+
+      <section class="workspace">
+        <div class="toolbar">
+          <button class="tab-button active" data-tab="document">Documento</button>
+          <button class="tab-button" data-tab="diagram">Diagrama</button>
+          <button class="tab-button" data-tab="json">JSON</button>
+          <button class="tab-button" data-tab="bpmn">BPMN</button>
+        </div>
+
+        <div class="actions">
+          <button id="download-pdf" type="button" disabled>PDF</button>
+          <button id="download-json" type="button" disabled>JSON</button>
+          <button id="download-bpmn" type="button" disabled>BPMN</button>
+        </div>
+
+        <article id="document" class="tab-content active empty-state">
+          Gere um procedimento para visualizar o resultado.
+        </article>
+        <article id="diagram" class="tab-content">
+          <div id="diagram-output" class="diagram-output"></div>
+        </article>
+        <article id="json" class="tab-content">
+          <pre id="json-output"></pre>
+        </article>
+        <article id="bpmn" class="tab-content">
+          <pre id="bpmn-output"></pre>
+        </article>
+      </section>
+    </main>
+
+    <script type="module">
+      import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+      window.mermaid = mermaid;
+      mermaid.initialize({ startOnLoad: false, theme: "neutral", securityLevel: "strict" });
+    </script>
+    <script src="./app.js"></script>
+  </body>
+</html>

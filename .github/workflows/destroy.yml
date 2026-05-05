@@ -1,0 +1,62 @@
+name: Destroy
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: "Digite DESTROY para confirmar a remocao de todos os recursos AWS"
+        required: true
+
+jobs:
+  destroy:
+    name: Remover infraestrutura da AWS
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Verificar confirmacao
+        run: |
+          if [[ "${{ github.event.inputs.confirm }}" != "DESTROY" ]]; then
+            echo "Confirmacao invalida. Digite exatamente: DESTROY"
+            exit 1
+          fi
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configurar credenciais AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION || 'us-east-1' }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      # O Lambda ZIP precisa existir para o Terraform validar o plano,
+      # mesmo durante destroy (filebase64sha256 no main.tf).
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Build Lambda ZIP (exigido pelo Terraform)
+        run: npm run package:api
+
+      - name: Terraform Init
+        working-directory: infra
+        run: |
+          terraform init -input=false \
+            -backend-config="bucket=${{ secrets.TF_STATE_BUCKET }}" \
+            -backend-config="key=pop-ia/terraform.tfstate" \
+            -backend-config="region=${{ secrets.AWS_REGION || 'us-east-1' }}"
+
+      - name: Terraform Destroy
+        working-directory: infra
+        env:
+          TF_VAR_aws_region: ${{ secrets.AWS_REGION || 'us-east-1' }}
+          TF_VAR_bedrock_model_id: ${{ secrets.BEDROCK_MODEL_ID }}
+        run: terraform destroy -input=false -auto-approve
+
+      - name: Confirmacao
+        run: echo "Todos os recursos AWS foram removidos. Nenhum custo adicional sera gerado."

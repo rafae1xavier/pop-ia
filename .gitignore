@@ -1,0 +1,9 @@
+node_modules/
+dist/
+.terraform/
+terraform.tfstate
+terraform.tfstate.backup
+*.tfvars
+infra/backend.hcl
+.env
+.DS_Store
