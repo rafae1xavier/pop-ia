@@ -134,7 +134,15 @@ resource "aws_lambda_function" "api" {
   }
 }
 
-# Lambda Function URL substitui API Gateway — sem limite de 30s
+resource "aws_lambda_permission" "function_url_public" {
+  statement_id           = "AllowPublicFunctionURL"
+  action                 = "lambda:InvokeFunctionUrl"
+  function_name          = aws_lambda_function.api.function_name
+  principal              = "*"
+  function_url_auth_type = "NONE"
+}
+
+# Lambda Function URL substitui API Gateway — sem limite de 30s (ADR-001)
 resource "aws_lambda_function_url" "api" {
   function_name      = aws_lambda_function.api.function_name
   authorization_type = "NONE"
