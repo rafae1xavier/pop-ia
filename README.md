@@ -36,19 +36,19 @@ C4Container
 
     Container(cloudfront, "CloudFront", "CDN AWS", "Distribui o frontend via HTTPS com cache global")
     Container(s3_web, "S3 Web", "Object Storage", "Hospeda os arquivos estáticos do frontend")
-    Container(apigw, "API Gateway", "HTTP API", "Expõe endpoint HTTPS para geração de POPs")
-    Container(lambda, "Lambda", "Node.js 20 · ARM64 · 1 GB · 60 s", "Orquestra prompt, IA, normalização, renderização e persistência")
+    Container(func_url, "Lambda Function URL", "HTTPS · sem timeout de 30 s", "Endpoint direto da Lambda — substitui API Gateway (ver ADR-001)")
+    Container(lambda, "Lambda", "Node.js 20 · ARM64 · 1 GB · 120 s", "Orquestra prompt, IA, normalização, renderização e persistência")
     ContainerDb(s3_docs, "S3 Documentos", "Object Storage", "Armazena JSON, Mermaid, BPMN, HTML e PDF gerados")
     ContainerDb(dynamo, "DynamoDB", "NoSQL · PAY_PER_REQUEST", "Histórico de gerações com checksum")
 
   }
 
-  System_Ext(bedrock, "Amazon Bedrock", "Claude 3.5 Haiku\nus.anthropic.claude-3-5-haiku-20241022-v1:0")
+  System_Ext(bedrock, "Amazon Bedrock", "Claude Haiku 4.5\nus.anthropic.claude-haiku-4-5-20251001-v1:0")
 
   Rel(usuario, cloudfront, "Acessa o frontend", "HTTPS")
   Rel(cloudfront, s3_web, "Serve arquivos estáticos", "OAC / S3 privado")
-  Rel(usuario, apigw, "Envia contexto do processo", "POST / JSON")
-  Rel(apigw, lambda, "Invoca função", "AWS Proxy v2")
+  Rel(usuario, func_url, "Envia contexto do processo", "POST / JSON · HTTPS")
+  Rel(func_url, lambda, "Invoca função diretamente")
   Rel(lambda, bedrock, "Gera conteúdo estruturado", "InvokeModel / HTTPS")
   Rel(lambda, s3_docs, "Salva artefatos", "PutObject / AWS SDK")
   Rel(lambda, dynamo, "Registra metadados", "PutItem / AWS SDK")
@@ -103,11 +103,11 @@ flowchart TB
     s3w["📄 index.html\n📜 app.js\n🎨 styles.css\n⚙️ config.js"]
   end
 
-  subgraph APIGW ["API Gateway — HTTP API"]
-    apigw["🔀 POST /\nCORS habilitado\nAuto-deploy"]
+  subgraph FURL ["Lambda Function URL"]
+    furl["🔗 POST /\nCORS habilitado\nSem timeout de 30 s\n(ver ADR-001)"]
   end
 
-  subgraph LAMBDA ["Lambda — Node.js 20 · ARM64"]
+  subgraph LAMBDA ["Lambda — Node.js 20 · ARM64 · 120 s"]
     direction TB
     handler["⚡ index.js\nHandler"]
     subgraph CORE ["Núcleo"]
@@ -128,7 +128,7 @@ flowchart TB
   end
 
   subgraph BEDROCK ["Amazon Bedrock"]
-    model["🧠 Claude 3.5 Haiku\nus.anthropic.*\nInference Profile"]
+    model["🧠 Claude Haiku 4.5\nus.anthropic.claude-haiku-4-5-20251001-v1:0\nInference Profile"]
   end
 
   subgraph S3D ["S3 — Documentos (privado)"]
@@ -145,8 +145,8 @@ flowchart TB
 
   user -->|"HTTPS"| cf
   cf -->|"OAC · S3 privado"| s3w
-  user -->|"POST / JSON"| apigw
-  apigw -->|"AWS Proxy v2"| handler
+  user -->|"POST / JSON"| furl
+  furl -->|"invoke direto"| handler
   bedrock_m -->|"InvokeModel"| model
   storage_m -->|"PutObject"| docs
   storage_m -->|"PutItem"| table
@@ -161,7 +161,7 @@ flowchart TB
 sequenceDiagram
   actor U as Usuário
   participant FE as Frontend
-  participant GW as API Gateway
+  participant FU as Lambda Function URL
   participant LB as Lambda
   participant BR as Bedrock
   participant S3 as S3 Docs
@@ -169,18 +169,19 @@ sequenceDiagram
 
   U->>FE: Descreve o processo via chat
   U->>FE: Clica em "Gerar POP"
-  FE->>GW: POST / {processName, messages, attachments}
-  GW->>LB: Invoca handler
+  FE->>FU: POST / {processName, messages, attachments}
+  note over FU: Sem limite de 30 s (ver ADR-001)
+  FU->>LB: Invoca handler diretamente
   LB->>LB: Valida e normaliza entrada
   LB->>LB: buildPrompt() — monta prompt ISO 9001
-  LB->>BR: InvokeModel (Claude 3.5 Haiku)
+  LB->>BR: InvokeModel (Claude Haiku 4.5)
   BR-->>LB: JSON estruturado do POP
   LB->>LB: normalizeProcedure() — garante schema
   LB->>LB: Gera Mermaid · BPMN · HTML · PDF
   LB->>S3: PutObject (5 artefatos)
   LB->>DB: PutItem (metadados)
-  LB-->>GW: {procedure, artifacts, assets}
-  GW-->>FE: 200 OK
+  LB-->>FU: {procedure, artifacts, assets}
+  FU-->>FE: 200 OK
   FE-->>U: Exibe documento, diagrama e downloads
 ```
 
@@ -192,9 +193,9 @@ sequenceDiagram
 |---|---|
 | Frontend | HTML · CSS · JavaScript (vanilla) · Mermaid.js |
 | CDN | Amazon CloudFront + S3 (OAC) |
-| API | Amazon API Gateway HTTP API |
-| Backend | AWS Lambda · Node.js 20 · ARM64 |
-| IA | Amazon Bedrock — Claude 3.5 Haiku (inference profile) |
+| API | Lambda Function URL (substituiu API Gateway — [ADR-001](docs/adr-001-lambda-function-url.md)) |
+| Backend | AWS Lambda · Node.js 20 · ARM64 · 120 s |
+| IA | Amazon Bedrock — Claude Haiku 4.5 (inference profile) |
 | Documentos | Amazon S3 |
 | Metadados | Amazon DynamoDB (PAY_PER_REQUEST) |
 | IaC | Terraform >= 1.5 · AWS Provider ~> 5.0 |
@@ -247,7 +248,7 @@ cp infra/terraform.tfvars.example infra/terraform.tfvars
 # editar: definir bedrock_model_id
 
 # 4. Habilitar o modelo no console AWS
-# Bedrock → Model catalog → US Anthropic Claude 3.5 Haiku → Status: Active
+# Bedrock → Model catalog → Claude Haiku 4.5 → Subscribe/Enable
 ```
 
 ### Comandos
@@ -274,7 +275,7 @@ make local     # roda API + frontend localmente
 | `AWS_SECRET_ACCESS_KEY` | Chave secreta AWS |
 | `AWS_REGION` | `us-east-1` |
 | `TF_STATE_BUCKET` | Nome do bucket gerado pelo `bootstrap.sh` |
-| `BEDROCK_MODEL_ID` | `us.anthropic.claude-3-5-haiku-20241022-v1:0` |
+| `BEDROCK_MODEL_ID` | `us.anthropic.claude-haiku-4-5-20251001-v1:0` |
 
 ---
 
