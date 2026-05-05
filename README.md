@@ -278,6 +278,33 @@ make local     # roda API + frontend localmente
 
 ---
 
+## Como obter bons resultados
+
+A **estrutura** do POP é sempre a mesma (template ISO 9001 fixo em `prompt.js`). O que varia é o **conteúdo**, que depende do que o usuário descreve no chat.
+
+| Entrada | Resultado |
+|---|---|
+| Campo "Processo" vazio + chat vazio | POP genérico com etapas-padrão ("Processo não identificado") |
+| Nome do processo preenchido | Claude infere etapas prováveis para aquele processo |
+| Descrição detalhada no chat | POP fiel ao processo real descrito |
+| Anexo com fluxo, formulário ou política | POP enriquecido com o conteúdo do documento |
+
+**Dica para a demonstração:** antes de clicar em "Gerar POP", peça ao aluno para descrever no chat as etapas principais, quem é o responsável, quais documentos são gerados e quais são as exceções do processo. Quanto mais contexto, melhor o resultado.
+
+---
+
+## Configurações de geração (Bedrock)
+
+| Variável de ambiente | Valor padrão | Descrição |
+|---|---|---|
+| `BEDROCK_MODEL_ID` | — | Inference profile ID do modelo no Bedrock |
+| `BEDROCK_MAX_TOKENS` | `3000` | Limite de tokens gerados por chamada |
+| `BEDROCK_TEMPERATURE` | `0.2` | Grau de criatividade (0 = determinístico) |
+
+> **Por que 3000 tokens?** O API Gateway HTTP API tem timeout fixo de **30 segundos**. Com 6000 tokens (padrão original) o modelo levava 30–36 s e retornava `503 Service Unavailable`. Com 3000 tokens a resposta chega em ~15 s. Para processos simples 3000 tokens é suficiente; para processos muito complexos é possível aumentar com um deploy local (`make deploy`) ou ajustando o secret `BEDROCK_MAX_TOKENS`.
+
+---
+
 ## Divisão da equipe
 
 | Papel | Responsável | Arquivos |
