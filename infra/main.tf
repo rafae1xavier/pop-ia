@@ -134,26 +134,43 @@ resource "aws_lambda_function" "api" {
   }
 }
 
-resource "aws_lambda_permission" "function_url_public" {
-  statement_id           = "AllowPublicFunctionURL"
-  action                 = "lambda:InvokeFunctionUrl"
-  function_name          = aws_lambda_function.api.function_name
-  principal              = "*"
-  function_url_auth_type = "NONE"
+resource "aws_apigatewayv2_api" "http" {
+  name          = "${local.name}-http-api"
+  protocol_type = "HTTP"
+
+  cors_configuration {
+    allow_headers = ["content-type"]
+    allow_methods = ["GET", "POST", "OPTIONS"]
+    allow_origins = var.allowed_origins
+  }
 }
 
-# Lambda Function URL substitui API Gateway — sem limite de 30s (ADR-001)
-resource "aws_lambda_function_url" "api" {
-  function_name      = aws_lambda_function.api.function_name
-  authorization_type = "NONE"
+resource "aws_apigatewayv2_integration" "lambda" {
+  api_id                 = aws_apigatewayv2_api.http.id
+  integration_type       = "AWS_PROXY"
+  integration_uri        = aws_lambda_function.api.invoke_arn
+  payload_format_version = "2.0"
+  timeout_milliseconds   = 29000
+}
 
-  cors {
-    allow_credentials = false
-    allow_origins     = var.allowed_origins
-    allow_methods     = ["GET", "POST"]
-    allow_headers     = ["content-type"]
-    max_age           = 3600
-  }
+resource "aws_apigatewayv2_route" "default" {
+  api_id    = aws_apigatewayv2_api.http.id
+  route_key = "$default"
+  target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+}
+
+resource "aws_apigatewayv2_stage" "default" {
+  api_id      = aws_apigatewayv2_api.http.id
+  name        = "$default"
+  auto_deploy = true
+}
+
+resource "aws_lambda_permission" "api_gateway" {
+  statement_id  = "AllowExecutionFromAPIGateway"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.api.function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_apigatewayv2_api.http.execution_arn}/*/*"
 }
 
 resource "aws_cloudfront_origin_access_control" "web" {
@@ -230,7 +247,7 @@ resource "aws_s3_object" "web_assets" {
 resource "aws_s3_object" "web_config" {
   bucket       = aws_s3_bucket.web.id
   key          = "config.js"
-  content      = "window.APP_CONFIG = { apiBaseUrl: \"${aws_lambda_function_url.api.function_url}\" };"
-  etag         = md5("window.APP_CONFIG = { apiBaseUrl: \"${aws_lambda_function_url.api.function_url}\" };")
+  content      = "window.APP_CONFIG = { apiBaseUrl: \"${aws_apigatewayv2_stage.default.invoke_url}\" };"
+  etag         = md5("window.APP_CONFIG = { apiBaseUrl: \"${aws_apigatewayv2_stage.default.invoke_url}\" };")
   content_type = "text/javascript; charset=utf-8"
 }

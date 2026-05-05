@@ -1,5 +1,5 @@
 output "api_url" {
-  value = aws_lambda_function_url.api.function_url
+  value = aws_apigatewayv2_stage.default.invoke_url
 }
 
 output "cloudfront_url" {
