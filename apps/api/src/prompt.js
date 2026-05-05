@@ -37,9 +37,18 @@ export const PROCEDURE_SCHEMA_EXAMPLE = {
   objective: "",
   diagram: {
     lanes: ["Qualidade", "Auditor", "Gestor"],
-    steps: [],
-    decisions: [],
-    connections: []
+    steps: [
+      { id: "S1", number: "3.1", lane: "Qualidade", title: "Nome da etapa", description: "Descricao" }
+    ],
+    decisions: [
+      { id: "D1", lane: "Auditor", question: "Condicao atendida?", yes: "S2", no: "S_fallback" }
+    ],
+    connections: [
+      { from: "START", to: "S1" },
+      { from: "S1", to: "D1" },
+      { from: "D1", to: "S2", label: "Sim" },
+      { from: "D1", to: "S_fallback", label: "Nao" }
+    ]
   },
   detailedFlow: [
     {
@@ -98,6 +107,7 @@ Regras obrigatorias:
 - Preencha documentos relacionados, incluindo ISO 9001 quando aplicavel.
 - Preencha a tabela de registros obrigatorios.
 - Gere fluxo compativel com BPMN.
+- Preencha o campo "lane" de cada etapa e decisao com o nome do responsavel (use apenas valores do array "lanes").
 - Use a conversa e os anexos como fonte primaria.
 - Nao invente nomes de sistemas, leis, clientes ou documentos especificos sem base. Quando nao souber, use "nao identificado".
 
