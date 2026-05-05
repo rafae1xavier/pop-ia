@@ -142,7 +142,7 @@ resource "aws_lambda_function_url" "api" {
   cors {
     allow_credentials = false
     allow_origins     = var.allowed_origins
-    allow_methods     = ["GET", "POST", "OPTIONS"]
+    allow_methods     = ["GET", "POST"]
     allow_headers     = ["content-type"]
     max_age           = 3600
   }
