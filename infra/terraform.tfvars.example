@@ -11,8 +11,8 @@ project_name = "pop-ia"
 #
 # Modelos disponíveis (do mais barato ao mais caro por token):
 #   anthropic.claude-3-haiku-20240307-v1:0        (~$0.0025 por chamada)
-#   us.anthropic.claude-3-7-sonnet-20250219-v1:0      (~$0.004 por chamada)
+#   us.anthropic.claude-haiku-4-5-20251001-v1:0      (~$0.004 por chamada)
 #   anthropic.claude-3-5-sonnet-20241022-v2:0     (~$0.018 por chamada)
 #
 # Para demonstrações com alunos, recomenda-se claude-3-5-haiku (boa qualidade, custo baixo).
-bedrock_model_id = "us.anthropic.claude-3-7-sonnet-20250219-v1:0"
+bedrock_model_id = "us.anthropic.claude-haiku-4-5-20251001-v1:0"
