@@ -12,7 +12,7 @@ Gera POPs no padrão ISO 9001 a partir de uma conversa em linguagem natural, usa
 C4Context
   title Contexto do Sistema — POP-IA
 
-  Person(usuario, "Docente / Gestor", "Descreve o processo a documentar via chat")
+  Person(usuario, "Usuário", "Descreve o processo a documentar via chat")
 
   System(pop_ia, "POP-IA", "Gera Procedimentos Operacionais Padrão estruturados com IA")
 
@@ -30,7 +30,7 @@ C4Context
 C4Container
   title Containers — POP-IA
 
-  Person(usuario, "Docente / Gestor")
+  Person(usuario, "Usuário")
 
   System_Boundary(aws, "AWS — us-east-1") {
 
@@ -93,7 +93,7 @@ C4Component
 
 ```mermaid
 flowchart TB
-  user(["👤 Docente / Gestor"])
+  user(["👤 Usuário"])
 
   subgraph CDN ["CloudFront — CDN"]
     cf["🌐 Distribution\nHTTPS · redirect-to-https\nCache Policy: CachingOptimized"]
