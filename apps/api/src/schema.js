@@ -17,7 +17,7 @@ export function normalizeProcedure(raw, request) {
     },
     diagram: normalizeDiagram(source.diagram, fallback.diagram),
     detailedFlow: normalizeDetailedFlow(source.detailedFlow, fallback.detailedFlow),
-    documents: normalizeStringArray(source.documents, fallback.documents),
+    documents: normalizeDocumentList(source.documents, fallback.documents),
     records: normalizeRecords(source.records, fallback.records)
   };
 
@@ -194,23 +194,50 @@ function normalizeDiagram(diagram, fallback) {
 
 function normalizeStep(step, index) {
   const safe = isObject(step) ? step : {};
+
   return {
     id: cleanId(safe.id || `S${index + 1}`),
     number: cleanText(safe.number || safe.step || `3.${index + 1}`),
-    lane: cleanText(safe.lane || "Qualidade"),
+    lane: cleanText(safe.lane || safe.responsible || "Qualidade"),
+    type: cleanText(safe.type || "activity"),
     title: cleanText(safe.title || safe.name || `Etapa ${index + 1}`),
-    description: cleanText(safe.description || "nao identificado")
+    description: cleanText(safe.description || "nao identificado"),
+    responsible: cleanText(safe.responsible || safe.lane || "Qualidade"),
+    inputDocuments: normalizeStringArray(safe.inputDocuments, []),
+    outputDocuments: normalizeStringArray(safe.outputDocuments, []),
+    records: normalizeStringArray(safe.records, []),
+    next: cleanId(safe.next || "")
   };
 }
 
 function normalizeDecision(decision, index) {
   const safe = isObject(decision) ? decision : {};
+
+  const yes = isObject(safe.yes)
+    ? safe.yes
+    : { label: "Sim", to: safe.yes || safe.yesTarget || "", description: "" };
+
+  const no = isObject(safe.no)
+    ? safe.no
+    : { label: "Nao", to: safe.no || safe.noTarget || "", description: "" };
+
   return {
     id: cleanId(safe.id || `D${index + 1}`),
-    lane: cleanText(safe.lane || "Qualidade"),
+    number: cleanText(safe.number || `3.${index + 1}`),
+    lane: cleanText(safe.lane || safe.responsible || "Qualidade"),
+    type: "decision",
     question: cleanText(safe.question || "Condicao atendida?"),
-    yes: cleanId(safe.yes || safe.yesTarget || ""),
-    no: cleanId(safe.no || safe.noTarget || "")
+    responsible: cleanText(safe.responsible || safe.lane || "Qualidade"),
+    yes: {
+      label: cleanText(yes.label || "Sim"),
+      to: cleanId(yes.to || ""),
+      description: cleanText(yes.description || "")
+    },
+    no: {
+      label: cleanText(no.label || "Nao"),
+      to: cleanId(no.to || ""),
+      description: cleanText(no.description || "")
+    }
   };
 }
 
@@ -257,6 +284,26 @@ function normalizeStringArray(value, fallback) {
   }
 
   return value.map((item) => cleanText(item)).filter(Boolean);
+}
+
+// Handles both string[] and {code, name, type}[] formats
+function normalizeDocumentList(value, fallback) {
+  if (!Array.isArray(value) || value.length === 0) {
+    return fallback;
+  }
+
+  return value
+    .map((item) => {
+      if (!item) return "";
+      if (typeof item === "string") return cleanText(item);
+      if (isObject(item)) {
+        const code = cleanText(item.code || "");
+        const name = cleanText(item.name || "");
+        return code && name ? `${code} - ${name}` : code || name;
+      }
+      return "";
+    })
+    .filter(Boolean);
 }
 
 function cleanText(value) {

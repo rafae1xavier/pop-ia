@@ -130,7 +130,7 @@ resource "aws_lambda_function" "api" {
       DOCUMENT_BUCKET     = aws_s3_bucket.documents.bucket
       PROCEDURE_TABLE     = aws_dynamodb_table.procedures.name
       CORS_ALLOW_ORIGIN   = join(",", var.allowed_origins)
-      BEDROCK_MAX_TOKENS  = "3000"
+      BEDROCK_MAX_TOKENS  = "4000"
       BEDROCK_TEMPERATURE = "0.2"
     }
   }

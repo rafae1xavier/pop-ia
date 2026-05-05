@@ -135,116 +135,154 @@ function paragraph(doc, text, options = {}) {
 }
 
 function drawFlowDiagram(doc, procedure) {
+  const lanes = (procedure.diagram.lanes || []).filter(Boolean);
   const steps = procedure.diagram.steps || [];
-  const decision = procedure.diagram.decisions[0];
-  const firstSteps = steps.slice(0, 5);
-  const correction = steps.find((step) => step.id === decision?.yes) || steps[5];
-  const followUp = steps.find((step) => step.id === decision?.no) || steps[6];
-  const closeStep = steps.find((step) => step.id !== correction?.id && step.id !== followUp?.id && step.number === "3.8") || steps[7];
+  const decisions = procedure.diagram.decisions || [];
+  const connections = (procedure.diagram.connections || []).filter((c) => c.from && c.to);
 
-  const x = PAGE.margin + 8;
-  const w = BODY_WIDTH - 16;
-  const centerX = x + w / 2;
-  const boxW = 250;
-  const boxH = 28;
-  const gap = 10;
+  const effectiveLanes = lanes.length > 0 ? lanes : ["Processo"];
+  const N = effectiveLanes.length;
 
-  ensureSpace(doc, 510);
-  let y = doc.y + 4;
+  const COL_W = Math.floor(BODY_WIDTH / N);
+  const LANE_HEADER_H = 18;
+  const BOX_W = Math.min(118, COL_W - 16);
+  const BOX_H = 26;
+  const GW_W = 60, GW_H = 34;
+  const EV_W = 60, EV_H = 20;
+  const GAP_Y = 12;
 
-  drawLaneBadges(doc, x, y, w, procedure.diagram.lanes || []);
-  y += 25;
+  // lane name → column index
+  const laneIdx = {};
+  effectiveLanes.forEach((l, i) => { laneIdx[l] = i; });
 
-  drawTerminator(doc, centerX, y, "Inicio");
-  y += 30 + gap;
+  // node info
+  const nodeCol = { START: 0, END: N - 1 };
+  const nodeType = { START: "start", END: "end" };
+  const nodeLabel = { START: "Inicio", END: "Fim" };
 
-  for (const step of firstSteps) {
-    drawArrow(doc, centerX, y - gap, centerX, y - 2);
-    drawBox(doc, centerX - boxW / 2, y, boxW, boxH, `${step.number} - ${step.title}`);
-    y += boxH + gap;
-  }
+  steps.forEach((s) => {
+    const id = cleanId(s.id);
+    nodeCol[id] = laneIdx[s.lane] ?? 0;
+    nodeType[id] = "task";
+    nodeLabel[id] = `${s.number} - ${s.title}`;
+  });
+  decisions.forEach((d) => {
+    const id = cleanId(d.id);
+    nodeCol[id] = laneIdx[d.lane] ?? 0;
+    nodeType[id] = "gateway";
+    nodeLabel[id] = d.question;
+  });
 
-  if (decision) {
-    drawArrow(doc, centerX, y - gap, centerX, y - 4);
-    drawDiamond(doc, centerX, y + 23, 178, 48, decision.question);
-    y += 58;
-  }
-
-  const branchY = y + 10;
-  const branchW = 202;
-  const leftX = PAGE.margin + 22;
-  const leftCenter = leftX + branchW / 2;
-  const rightCenter = PAGE.width - PAGE.margin - 22 - branchW / 2;
-
-  if (correction) {
-    doc.font("Helvetica").fontSize(7.5).text("Sim", leftCenter - 50, branchY - 18, {
-      width: 40,
-      align: "center"
-    });
-    drawPolylineArrow(doc, [
-      [centerX - 28, branchY - 28],
-      [leftCenter, branchY - 28],
-      [leftCenter, branchY - 2]
-    ]);
-    drawBox(doc, leftX, branchY, branchW, boxH, `${correction.number} - ${correction.title}`);
-  }
-
-  y = branchY + boxH + 20;
-
-  if (followUp) {
-    const mergeY = y;
-    if (correction) {
-      drawPolylineArrow(doc, [
-        [leftCenter, branchY + boxH],
-        [leftCenter, mergeY - 10],
-        [centerX, mergeY - 10],
-        [centerX, mergeY - 2]
-      ]);
+  // BFS level assignment
+  const adj = {};
+  const allIds = Object.keys(nodeType);
+  allIds.forEach((id) => { adj[id] = []; });
+  connections.forEach((c) => {
+    const from = cleanId(c.from), to = cleanId(c.to);
+    if (adj[from] !== undefined && nodeType[to] !== undefined) {
+      adj[from].push({ to, label: c.label || "" });
     }
-    doc.font("Helvetica").fontSize(7.5).text("Nao", rightCenter + 10, branchY - 18, {
-      width: 40,
+  });
+
+  const level = { START: 0 };
+  const queue = ["START"];
+  while (queue.length) {
+    const id = queue.shift();
+    (adj[id] || []).forEach(({ to }) => {
+      if (level[to] === undefined) {
+        level[to] = (level[id] || 0) + 1;
+        queue.push(to);
+      }
+    });
+  }
+  allIds.forEach((id) => { if (level[id] === undefined) level[id] = 0; });
+
+  const maxLevel = Math.max(...Object.values(level));
+  const rowH = BOX_H + GAP_Y;
+  const totalDiagramH = LANE_HEADER_H + (maxLevel + 1) * rowH + GAP_Y + 30;
+
+  ensureSpace(doc, totalDiagramH + 10);
+  const startY = doc.y + 4;
+
+  // Draw lane columns
+  for (let i = 0; i < N; i++) {
+    const colX = PAGE.margin + i * COL_W;
+    doc.save();
+    if (i % 2 === 0) {
+      doc.rect(colX, startY, COL_W, totalDiagramH).fill("#f7f8fa").stroke("#cccccc");
+    } else {
+      doc.rect(colX, startY, COL_W, totalDiagramH).fill("#ffffff").stroke("#cccccc");
+    }
+    doc.restore();
+    doc.font("Helvetica-Bold").fontSize(6.8).fillColor("#333333").text(effectiveLanes[i], colX + 2, startY + 5, {
+      width: COL_W - 4,
       align: "center"
     });
-    drawPolylineArrow(doc, [
-      [centerX + 28, branchY - 28],
-      [rightCenter, branchY - 28],
-      [rightCenter, mergeY - 10],
-      [centerX, mergeY - 10],
-      [centerX, mergeY - 2]
-    ]);
-    drawBox(doc, centerX - boxW / 2, mergeY, boxW, boxH, `${followUp.number} - ${followUp.title}`);
-    y = mergeY + boxH + gap;
   }
+  doc.fillColor("#000000");
 
-  if (closeStep) {
-    drawArrow(doc, centerX, y - gap, centerX, y - 2);
-    drawBox(doc, centerX - boxW / 2, y, boxW, boxH, `${closeStep.number} - ${closeStep.title}`);
-    y += boxH + gap;
-  }
+  // Compute element positions
+  const pos = {};
+  allIds.forEach((id) => {
+    const col = nodeCol[id] ?? 0;
+    const lv = level[id] ?? 0;
+    const cx = PAGE.margin + col * COL_W + COL_W / 2;
+    const cy = startY + LANE_HEADER_H + GAP_Y + lv * rowH + BOX_H / 2;
+    pos[id] = { cx, cy };
+  });
 
-  drawArrow(doc, centerX, y - gap, centerX, y - 2);
-  drawTerminator(doc, centerX, y, "Fim");
-  doc.y = y + 40;
+  // Draw connections
+  doc.lineWidth(0.6).strokeColor("#555555");
+  connections.forEach((c, i) => {
+    const from = cleanId(c.from), to = cleanId(c.to);
+    const fp = pos[from], tp = pos[to];
+    if (!fp || !tp) return;
+
+    const fromType = nodeType[from];
+    const toType = nodeType[to];
+    const fromH = fromType === "gateway" ? GW_H / 2 : fromType === "start" || fromType === "end" ? EV_H / 2 : BOX_H / 2;
+    const toH = toType === "gateway" ? GW_H / 2 : toType === "start" || toType === "end" ? EV_H / 2 : BOX_H / 2;
+
+    const x1 = fp.cx, y1 = fp.cy + fromH;
+    const x2 = tp.cx, y2 = tp.cy - toH;
+
+    if (Math.abs(x1 - x2) < 4) {
+      drawArrow(doc, x1, y1, x2, y2);
+    } else {
+      const midY = (y1 + y2) / 2;
+      drawPolylineArrow(doc, [[x1, y1], [x1, midY], [x2, midY], [x2, y2]]);
+    }
+
+    if (c.label) {
+      doc.font("Helvetica").fontSize(6).fillColor("#555555")
+        .text(c.label, Math.min(x1, x2) - 2, (y1 + y2) / 2 - 8, { width: 30, align: "center" });
+      doc.fillColor("#000000");
+    }
+  });
+
+  // Draw elements
+  doc.lineWidth(0.7).strokeColor("#111111");
+  allIds.forEach((id) => {
+    const p = pos[id];
+    if (!p) return;
+    const type = nodeType[id];
+    const label = nodeLabel[id] || id;
+
+    if (type === "task") {
+      drawBox(doc, p.cx - BOX_W / 2, p.cy - BOX_H / 2, BOX_W, BOX_H, label);
+    } else if (type === "gateway") {
+      drawDiamond(doc, p.cx, p.cy, GW_W, GW_H, label);
+    } else {
+      drawTerminator(doc, p.cx, p.cy - EV_H / 2, label);
+    }
+  });
+
+  doc.y = startY + totalDiagramH + 8;
   doc.x = PAGE.margin;
 }
 
-function drawLaneBadges(doc, x, y, width, lanes) {
-  if (!lanes.length) {
-    return;
-  }
-
-  const labelW = Math.min(112, (width - 16) / lanes.length);
-  const totalW = labelW * lanes.length + 8 * (lanes.length - 1);
-  let cursor = x + (width - totalW) / 2;
-
-  for (const lane of lanes) {
-    doc.roundedRect(cursor, y, labelW, 16, 3).stroke("#777777");
-    doc.font("Helvetica").fontSize(7).text(lane, cursor + 4, y + 4, {
-      width: labelW - 8,
-      align: "center"
-    });
-    cursor += labelW + 8;
-  }
+function cleanId(value) {
+  return String(value || "").replace(/[^A-Za-z0-9_-]/g, "_");
 }
 
 function drawBox(doc, x, y, w, h, text) {

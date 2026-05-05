@@ -24,6 +24,12 @@ let chatMessages = [];
 let attachments = [];
 let bpmnViewer = null;
 
+const HISTORY_KEY = "pop-ia-history";
+const HISTORY_MAX = 10;
+
+const historyPanel = document.querySelector("#history-panel");
+const historyList = document.querySelector("#history-list");
+
 apiInput.value = window.APP_CONFIG?.apiBaseUrl || localStorage.getItem("apiBaseUrl") || "http://localhost:3000";
 
 addChatMessage(
@@ -138,6 +144,7 @@ async function generateProcedure() {
 
     lastResult = await response.json();
     renderResult(lastResult);
+    saveHistory(lastResult, payload);
     setStatus("Procedimento gerado com sucesso.");
     setDownloads(true);
     addChatMessage("assistant", "POP gerado. Revise a aba Documento e baixe os arquivos quando estiver pronto.");
@@ -403,3 +410,68 @@ function escapeHtml(value) {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
 }
+
+function saveHistory(result, payload) {
+  const history = loadHistory();
+  const entry = {
+    id: result.assets?.id || Date.now().toString(),
+    timestamp: Date.now(),
+    processName: result.procedure?.header?.processName || payload.processName || "Sem nome",
+    code: result.procedure?.header?.code || payload.code || "",
+    date: result.procedure?.header?.date || payload.date || "",
+    result
+  };
+
+  const filtered = history.filter((h) => h.id !== entry.id);
+  const updated = [entry, ...filtered].slice(0, HISTORY_MAX);
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(updated));
+  renderHistory();
+}
+
+function loadHistory() {
+  try {
+    return JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]");
+  } catch {
+    return [];
+  }
+}
+
+function renderHistory() {
+  const history = loadHistory();
+  if (history.length === 0) {
+    historyPanel.classList.add("hidden");
+    return;
+  }
+
+  historyPanel.classList.remove("hidden");
+  historyList.innerHTML = "";
+
+  for (const entry of history) {
+    const item = document.createElement("div");
+    item.className = "history-item";
+    item.title = `Clique para restaurar: ${escapeHtml(entry.processName)}`;
+
+    const date = new Date(entry.timestamp).toLocaleDateString("pt-BR", {
+      day: "2-digit",
+      month: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit"
+    });
+
+    item.innerHTML = `
+      <span class="history-item-name">${escapeHtml(entry.processName)}</span>
+      <span class="history-item-meta">${escapeHtml(date)}</span>
+    `;
+
+    item.addEventListener("click", () => {
+      lastResult = entry.result;
+      renderResult(entry.result);
+      setDownloads(true);
+      setStatus(`Restaurado: ${entry.processName}`);
+    });
+
+    historyList.appendChild(item);
+  }
+}
+
+renderHistory();
