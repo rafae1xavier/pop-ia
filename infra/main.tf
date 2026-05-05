@@ -125,11 +125,13 @@ resource "aws_lambda_function" "api" {
 
   environment {
     variables = {
-      BEDROCK_MODEL_ID  = var.bedrock_model_id
-      DEMO_MODE         = var.bedrock_model_id == "" ? "true" : "false"
-      DOCUMENT_BUCKET   = aws_s3_bucket.documents.bucket
-      PROCEDURE_TABLE   = aws_dynamodb_table.procedures.name
-      CORS_ALLOW_ORIGIN = join(",", var.allowed_origins)
+      BEDROCK_MODEL_ID    = var.bedrock_model_id
+      DEMO_MODE           = var.bedrock_model_id == "" ? "true" : "false"
+      DOCUMENT_BUCKET     = aws_s3_bucket.documents.bucket
+      PROCEDURE_TABLE     = aws_dynamodb_table.procedures.name
+      CORS_ALLOW_ORIGIN   = join(",", var.allowed_origins)
+      BEDROCK_MAX_TOKENS  = "3000"
+      BEDROCK_TEMPERATURE = "0.2"
     }
   }
 }
